@@ -16,12 +16,14 @@ import at.hannibal2.skyhanni.events.effects.EffectDurationChangeType
 import at.hannibal2.skyhanni.features.dungeon.DungeonApi
 import at.hannibal2.skyhanni.features.rift.RiftApi
 import at.hannibal2.skyhanni.skyhannimodule.SkyHanniModule
+import at.hannibal2.skyhanni.utils.ChatUtils
 import at.hannibal2.skyhanni.utils.LorenzUtils
 import at.hannibal2.skyhanni.utils.RegexUtils.matchMatcher
 import at.hannibal2.skyhanni.utils.RenderUtils.renderStrings
 import at.hannibal2.skyhanni.utils.SoundUtils.playPlingSound
 import at.hannibal2.skyhanni.utils.TimeUnit
 import at.hannibal2.skyhanni.utils.TimeUtils.format
+import at.hannibal2.skyhanni.utils.TimeUtils.getDuration
 import at.hannibal2.skyhanni.utils.TimeUtils.timerColor
 import at.hannibal2.skyhanni.utils.Timer
 import at.hannibal2.skyhanni.utils.collection.CollectionUtils.sorted
@@ -44,6 +46,16 @@ object NonGodPotEffectDisplay {
         "misc.nongodpot.effects",
         "§7You have §e(?<name>\\d+) §7non-god effects\\.",
     )
+
+    /**
+     * REGEX-TEST: §bWisp's Ice-Flavored Water I§r§r§r §r§f24m§r
+     * REGEX-TEST: §r§r§2Mushed Glowy Tonic I§r§r§r §r§f1h 25m§r
+     */
+    private val effectDurationPattern by RepoPattern.pattern(
+        "misc.nongodpot.duration",
+        "§r§r§[0-9a-f](?<name>[^§]+) I§r§r§r §r§f(?<duration>\\d+h? ?\\d*m?)§r",
+    )
+
     private var totalEffectsCount = 0
 
     @HandleEvent
@@ -154,6 +166,25 @@ object NonGodPotEffectDisplay {
             effectsCountPattern.matchMatcher(line) {
                 val group = group("name")
                 effectsCount = group.toInt()
+            }
+            effectDurationPattern.matchMatcher(line) {
+                val name = group("name")
+                val duration = group("duration")
+                val parsedDuration = getDuration(duration)
+                val effect = NonGodPotEffect.entries.find { it.tabListName.contains(name) }
+                if (effect != null) {
+                    val existingTimer = effectDuration[effect]
+                    if (existingTimer != null) {
+                        val timeDiff = (existingTimer.remaining - parsedDuration).absoluteValue
+                        if (timeDiff.inWholeSeconds <= 60) {
+                            ChatUtils.debug("Skipping update for ${effect.name} - time difference within 1 minute")
+                            return@matchMatcher
+                        }
+                    }
+                    effectDuration[effect] = Timer(parsedDuration)
+                } else {
+                    ChatUtils.debug("Unknown effect in tab: '$name'")
+                }
             }
         }
         totalEffectsCount = effectsCount
