@@ -35,6 +35,27 @@ class CarnivalConfig {
 
     @Expose
     @ConfigOption(
+        name = "Fruit Digging Solver",
+        desc = "Suggests the next Fruit Digging sand block and shows debug info for fruit and bomb detection."
+    )
+    @ConfigEditorBoolean
+    @FeatureToggle
+    var fruitDiggingSolver: Boolean = true
+
+    @Expose
+    @ConfigOption(
+        name = "Fruit Digging Debug",
+        desc = "Show Fruit Digging fruit and bomb detection debug lines in chat."
+    )
+    @ConfigEditorBoolean
+    var fruitDiggingDebug: Boolean = false
+
+    @Expose
+    @ConfigLink(owner = CarnivalConfig::class, field = "fruitDiggingSolver")
+    val fruitDiggingPosition: Position = Position(20, 80)
+
+    @Expose
+    @ConfigOption(
         name = "Double Click to Start",
         desc = "Click the NPC again after it finishes talking to start the game."
     )
